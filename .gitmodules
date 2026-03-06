@@ -1,0 +1,3 @@
+[submodule "rz-pipe"]
+	path = rz-pipe
+	url = https://github.com/rizinorg/rz-pipe.git

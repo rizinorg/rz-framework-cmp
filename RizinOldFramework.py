@@ -4,6 +4,7 @@ from stats.Symbol import Symbol, SymbolType
 from stats.DPDuration import DPDuration, DPTypeDuration
 from stats.Data import Addr
 
+import re
 import logging as log
 
 import json
@@ -38,7 +39,8 @@ class RizinOldFramework(Framework):
             fcn_addr = fcn["offset"]
             fcn_bbs = json.loads(pipe.cmd(f"afbj @ {fcn_addr:#x}"))
             fcn_size = fcn["size"]
-            fcn_name = fcn["name"].strip("sym.")
+            # Remove flag name prefixes.
+            fcn_name = re.sub(r"^(\w+\.)+", "", fcn["name"])
             symbol = Symbol(fcn_name, SymbolType.FUNCTION, fcn_size, Addr(fcn_addr))
             symbol.add_entry_point(fcn_addr)
 

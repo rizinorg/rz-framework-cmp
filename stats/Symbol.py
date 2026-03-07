@@ -8,6 +8,9 @@ class SymbolType(Enum):
     FUNCTION = 1
     OBJECT = 2
 
+    def __str__(self):
+        return f"{self.name}"
+
 
 class Symbol:
     def __init__(self, name: str, type: SymbolType, size: int, location: Addr):

@@ -43,11 +43,8 @@ class Stats:
         covered = [x for x in sorted(a.ranges + b.ranges, key=lambda r: r[0])]
         sum_dividend = 0
         sum_divisor = 0
-        print(a.ranges)
-        print(b.ranges)
         i: Addr = Addr(0)
         for r in covered:
-            print(r)
             if i > r[1]:
                 continue
             if i not in range(r[0], r[1]):
@@ -55,8 +52,6 @@ class Stats:
             while i < r[1]:
                 A_i = any([i in range(r[0], r[1]) for r in a.ranges])
                 B_i = any([i in range(r[0], r[1]) for r in b.ranges])
-                print(f"A[{i}]: {A_i}")
-                print(f"B[{i}]: {B_i}")
 
                 sum_dividend += 1 if A_i and B_i else 0
                 sum_divisor += 1 if A_i or B_i else 0

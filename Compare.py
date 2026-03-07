@@ -72,12 +72,70 @@ class Comparator:
                 )
 
     def symbol_comparison_table(self):
-        pass
+        if len(self.stats) == 0:
+            log.error("Analysis must run to collect data.")
+            return
+
+        print("Tanimoto Similarity Score\n-------------------------\n")
+
+        # One table per Binary
+        for bin in self.bins:
+            table = PrettyTable()
+            field_names = ["Symbol", "Type", "Bin"] + self.framework_names
+            table.field_names = field_names
+
+            scores: dict[str, list[float]] = dict()
+            for sym_name in bin.symbols.keys():
+                scores[sym_name] = {"bin": "1.0"}
+
+            # Maps symbol names detected by frameworks, but not in the binary info,
+            # to the frameworks which discovered them.
+            fw_only_symbols: dict[str, list[str]] = dict()
+
+            for fw_name in self.framework_names:
+                fw: Framework = self.frameworks[fw_name]
+                for sym_name, symbol in fw.symbols.items():
+                    if sym_name not in scores.keys():
+                        # A symbol detected by the framework, but not present
+                        # in the binary info
+                        if sym_name not in fw_only_symbols:
+                            fw_only_symbols[sym_name] = list()
+                        fw_only_symbols[sym_name].append(fw_name)
+                    else:
+                        t = Stats.tanimoto_similarity_symbol(
+                            bin.symbols[sym_name], symbol
+                        )
+                        scores[sym_name].update({fw_name: f"{t:.2f}"})
+
+            sym_names = list(scores.keys())
+            sym_names.sort()
+
+            for sym_name in sym_names:
+                table.add_row(
+                    [sym_name, bin.symbols[sym_name].type, "1.0"]
+                    + [
+                        scores[sym_name][fwn] if fwn in scores[sym_name] else "-"
+                        for fwn in self.framework_names
+                    ]
+                )
+
+            fw_only_rows = list()
+            for sym_name, fw_names in fw_only_symbols.items():
+                fw_only_rows.append(
+                    [sym_name, "-", "-"]
+                    + ["x" if fwn in fw_names else "-" for fwn in self.framework_names]
+                )
+
+            table.add_rows(fw_only_rows)
+            table.align = "l"
+            print(f"FILE: {bin.path}")
+            print(table.get_string(sortby="Symbol"))
 
     def runtime_comparison_table(self):
         if len(self.stats) == 0:
             log.error("Analysis must run to collect data.")
             return
+        print("Runtime measurements\n--------------------\n")
         # One table per Binary
         for bin in self.bins:
             table = PrettyTable()
@@ -124,4 +182,7 @@ if __name__ == "__main__":
     log.basicConfig(level=log.DEBUG if args.verbose else log.INFO)
     comparator = Comparator(args.bin_path, args.frameworks)
     comparator.analyze_all()
+    print("\nRESULTS\n=======\n")
     comparator.runtime_comparison_table()
+    print("\n")
+    comparator.symbol_comparison_table()

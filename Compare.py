@@ -61,6 +61,9 @@ class Comparator:
     def analyze_all(self):
         for fw_name, fw in self.frameworks.items():
             for bin in self.bins:
+                log.info(
+                    f"Analyzing '{bin.path.name}' with {fw_name}"
+                )
                 dps = fw.analyze_bin(bin)
 
                 stats = Stats()
@@ -68,7 +71,7 @@ class Comparator:
                 stats.add_symbols(fw.symbols)
                 self.stats[(fw, bin)] = stats
                 log.info(
-                    f"Analyzing '{bin.path.name}' with {fw_name} found {len(fw.symbols)} symbols."
+                    f"{fw_name} found {len(fw.symbols)} symbols."
                 )
 
     def symbol_comparison_table(self):

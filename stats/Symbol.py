@@ -38,7 +38,7 @@ class Symbol:
         Returns total number of bytes this symbol covers.
         It will always use Symbol.ranges for this calculation.
         """
-        return sum([r[1] - r[0] for r in self.ranges])
+        return sum([r[1] - r[0] for r in self.ranges]).is_integer()
 
     def __repr__(self):
         return f"SYMBOL<{self.name} | type: {self.type} | entries: {[e for e in self.entry_points]} | ranges: {[e for e in self.ranges]}>"

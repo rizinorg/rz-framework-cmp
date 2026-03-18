@@ -12,6 +12,7 @@ import psutil
 import os
 
 from Binary import Binary, init_binary
+from stats.Symbol import Symbol, SymbolType
 from Framework import (
     FRAMEWORK_NAMES,
     FRAMEWORK_RIZIN,
@@ -112,7 +113,10 @@ class Comparator:
             table.field_names = field_names
 
             scores: dict[str, dict[str, str]] = dict()
-            for sym_name in bin.symbols.keys():
+            for sym_name, symbol in bin.symbols.items():
+                if symbol.type != SymbolType.FUNCTION:
+                    # Ignore for now.
+                    continue
                 scores[sym_name] = {"bin": "1.0"}
 
             # Maps symbol names detected by frameworks, but not in the binary info,
@@ -122,6 +126,9 @@ class Comparator:
             for fw_name in self.framework_names:
                 fw: Framework = self.frameworks[fw_name]
                 for sym_name, symbol in fw.symbols.items():
+                    if symbol.type != SymbolType.FUNCTION:
+                        # Ignore for now.
+                        continue
                     if sym_name not in scores.keys():
                         # A symbol detected by the framework, but not present
                         # in the binary info

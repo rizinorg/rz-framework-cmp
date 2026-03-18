@@ -12,9 +12,9 @@ class DPDuration:
     Duration data point.
     """
 
-    def __init__(self, type: DPTypeDuration, start_ns: int = monotonic_ns()):
+    def __init__(self, type: DPTypeDuration):
         self.type: DPTypeDuration = type
-        self.start_ns: int = start_ns
+        self.start_ns: int = monotonic_ns()
         self.end_ns: int = 0
 
     def set_end(self):
@@ -25,5 +25,5 @@ class DPDuration:
             raise ValueError("end_ns wasn't set yet.")
         return self.end_ns - self.start_ns
 
-    def get_delta_ms(self) -> int:
+    def get_delta_ms(self) -> float:
         return self.get_delta_ns() / 1000000

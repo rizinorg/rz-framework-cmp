@@ -11,15 +11,22 @@ class Stats:
     def __init__(self):
         # The duration data points for a given library.
         self.duration_dps: dict[DPTypeDuration, DPDuration] = dict()
+        self.max_ram: int = 0
         self.symbols: dict[str, Symbol] = dict()
 
     def add_dps_duration(self, dps: dict[DPTypeDuration, DPDuration]):
         self.duration_dps.update(dps)
 
+    def add_max_ram(self, max_ram: int):
+        self.max_ram = max_ram
+
     def add_symbols(self, symbols: dict[str, Symbol]):
         self.symbols.update(symbols)
 
-    def get_runtime_ms(self, type: DPTypeDuration) -> int | None:
+    def get_max_ram_mb(self) -> str:
+        return f"{self.max_ram / 1000000:.2f} MB"
+
+    def get_runtime_ms(self, type: DPTypeDuration) -> float | None:
         if type not in self.duration_dps:
             return None
         return self.duration_dps[type].get_delta_ms()

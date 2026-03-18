@@ -19,3 +19,8 @@ pytest
 
 [!NOTE]
 > `uv tool run pytest` doesn't seem to work currently.
+
+# Requirements
+
+- Tested binaries MUST have DWARF information.
+  The covered address ranges of symbols are only calculated with that data to ensure they are accurate.

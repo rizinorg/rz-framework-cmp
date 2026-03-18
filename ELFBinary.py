@@ -31,6 +31,7 @@ class ELFBinary(Binary):
         )
         self._load_symbols()
 
+    @staticmethod
     def can_load(bin_path: Path) -> bool:
         try:
             ELFFile.load_from_path(bin_path)

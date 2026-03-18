@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
+import multiprocessing
 
 from prettytable import PrettyTable
 from pathlib import Path
 import argparse
 import logging as log
+
+from multiprocessing.pool import ThreadPool
+import time
+import psutil
+import os
 
 from Binary import Binary, init_binary
 from Framework import (
@@ -59,20 +65,38 @@ class Comparator:
             log.info(f"Initialized {fname}")
 
     def analyze_all(self):
+        process = psutil.Process(os.getpid())
         for fw_name, fw in self.frameworks.items():
             for bin in self.bins:
-                log.info(
-                    f"Analyzing '{bin.path.name}' with {fw_name}"
-                )
-                dps = fw.analyze_bin(bin)
+                log.info(f"Analyzing '{bin.path.name}' with {fw_name}")
+                stop_event = multiprocessing.Event()
+
+                def track_max_mem():
+                    max_mem = 0
+                    while not stop_event.is_set():
+                        mem = process.memory_info().rss
+                        if mem > max_mem:
+                            max_mem = mem
+                        time.sleep(0.5)
+                    return max_mem
+
+                pool = ThreadPool(processes=2)
+                track_ram_usage = pool.apply_async(track_max_mem)
+
+                fw_ana_ret = pool.apply_async(fw.analyze_bin, [bin])
+
+                dps = fw_ana_ret.get()
+
+                # Stop tracking mem
+                stop_event.set()
+                max_ram = track_ram_usage.get()
 
                 stats = Stats()
                 stats.add_dps_duration(dps)
+                stats.add_max_ram(max_ram)
                 stats.add_symbols(fw.symbols)
                 self.stats[(fw, bin)] = stats
-                log.info(
-                    f"{fw_name} found {len(fw.symbols)} symbols."
-                )
+                log.info(f"{fw_name} found {len(fw.symbols)} symbols.")
 
     def symbol_comparison_table(self):
         if len(self.stats) == 0:
@@ -87,7 +111,7 @@ class Comparator:
             field_names = ["Symbol", "Type", "Bin"] + self.framework_names
             table.field_names = field_names
 
-            scores: dict[str, list[float]] = dict()
+            scores: dict[str, dict[str, str]] = dict()
             for sym_name in bin.symbols.keys():
                 scores[sym_name] = {"bin": "1.0"}
 
@@ -142,7 +166,7 @@ class Comparator:
         # One table per Binary
         for bin in self.bins:
             table = PrettyTable()
-            field_names = ["Framework", "Open file", "Analysis"]
+            field_names = ["Framework", "Open file", "Analysis", "Max RAM"]
             table.field_names = field_names
 
             for fw_name, fw in self.frameworks.items():
@@ -150,9 +174,25 @@ class Comparator:
                     table.add_row([fw_name, "-", "-"])
                     continue
                 stats = self.stats[(fw, bin)]
-                open_rt = stats.get_runtime_ms(DPTypeDuration.RUNTIME_OPEN_FILE) / 1000
-                ana_rt = stats.get_runtime_ms(DPTypeDuration.RUNTIME_ANALYZE_ALL) / 1000
-                table.add_row([fw_name, f"{open_rt:.2f} s", f"{ana_rt:.2f} s"])
+
+                rt = stats.get_runtime_ms(DPTypeDuration.RUNTIME_OPEN_FILE)
+                if not rt:
+                    log.error("Failed to get runtime RUNTIME_OPEN_FILE")
+                    rt = 0
+                open_rt = rt / 1000
+                rt = stats.get_runtime_ms(DPTypeDuration.RUNTIME_ANALYZE_ALL)
+                if not rt:
+                    log.error("Failed to get runtime RUNTIME_ANALYZE_ALL")
+                    rt = 0
+                ana_rt = rt / 1000
+                table.add_row(
+                    [
+                        fw_name,
+                        f"{open_rt:.2f} s",
+                        f"{ana_rt:.2f} s",
+                        f"{stats.get_max_ram_mb()}",
+                    ]
+                )
 
             print(f"FILE: {bin.path}")
             print(table)

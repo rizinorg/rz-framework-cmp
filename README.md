@@ -5,7 +5,7 @@ Comparison tool for Rizin to other RE frameworks or Rizin versions.
 Install `uv`: https://docs.astral.sh/uv/#installation
 
 ```
-uv venvce .venv/bin/activate
+uv venv
 source .venv/bin/activate
 uv sync
 uv run Compare.py -h

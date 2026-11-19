@@ -1,6 +1,6 @@
 from stats.DPDuration import DPDuration, DPTypeDuration
 from stats.Symbol import Symbol
-from stats.Data import Addr
+from stats.Data import Addr, AddrRange
 
 
 class Stats:
@@ -42,27 +42,52 @@ class Stats:
         The similarity is calculated by:
         T(X,Y) = SUM_i(X[i] & Y[i]) / SUM_i(X[i] | Y[i])
 
-        In the calculation here we compare the address ranges.
-        So effectively check how many bytes in the Symbols' address ranges overlap.
+        Here the bit vectors are the Symbols' address ranges:
+        X[i] is 1 iff byte i is covered by one of the ranges.
+        Bytes covered are a set of disjoint intervals, so instead of
+        iterating bit by bit we merge overlapping ranges and sweep the
+        interval boundaries: the number of set intersection bits is the
+        sum of the intersection lengths, and likewise for the union.
 
         https://en.wikipedia.org/wiki/Jaccard_index#Tanimoto_similarity_and_distance
         """
-        covered = [x for x in sorted(a.ranges + b.ranges, key=lambda r: r[0])]
-        sum_dividend = 0
-        sum_divisor = 0
-        i: Addr = Addr(0)
-        for r in covered:
-            if i > r[1]:
-                continue
-            if i not in range(r[0], r[1]):
-                i = r[0]
-            while i < r[1]:
-                A_i = any([i in range(r[0], r[1]) for r in a.ranges])
-                B_i = any([i in range(r[0], r[1]) for r in b.ranges])
+        a_ranges = Stats._merged_ranges(a)
+        b_ranges = Stats._merged_ranges(b)
 
-                sum_dividend += 1 if A_i and B_i else 0
-                sum_divisor += 1 if A_i or B_i else 0
-                i += Addr(1)
-        if sum_divisor == 0:
+        intersection = 0
+        i = j = 0
+        while i < len(a_ranges) and j < len(b_ranges):
+            lo = max(a_ranges[i][0], b_ranges[j][0])
+            hi = min(a_ranges[i][1], b_ranges[j][1])
+            if lo < hi:
+                intersection += hi - lo
+            if a_ranges[i][1] < b_ranges[j][1]:
+                i += 1
+            else:
+                j += 1
+
+        union = (
+            sum(hi - lo for lo, hi in a_ranges)
+            + sum(hi - lo for lo, hi in b_ranges)
+            - intersection
+        )
+        if union == 0:
             return 0.0
-        return sum_dividend / sum_divisor
+        return intersection / union
+
+    @staticmethod
+    def _merged_ranges(symbol: Symbol) -> list[AddrRange]:
+        """
+        Returns the symbol's address ranges as a sorted list of
+        disjoint right-open intervals, with overlapping ranges merged.
+        """
+        merged: list[list[Addr]] = list()
+        for lo, hi in sorted(
+            (lo, hi) for lo, hi in symbol.ranges if hi > lo
+        ):
+            if merged and lo <= merged[-1][1]:
+                if hi > merged[-1][1]:
+                    merged[-1][1] = hi
+            else:
+                merged.append([lo, hi])
+        return merged
